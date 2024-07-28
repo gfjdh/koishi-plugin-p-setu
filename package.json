@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-p-setu",
   "description": "p点-涩图，不会吞图的涩图插件，需要配合p-qiandao食用",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
