@@ -16,7 +16,7 @@ export const name = 'setu'
 
 export interface Config {
   adminUsers: string[]
-  blockingWword: string[]
+  blockingWord: string[]
   price: number
   punishment: number
   outputLogs: boolean
@@ -29,7 +29,7 @@ export const inject = {
 
 export const Config: Schema<Config> = Schema.object({
   adminUsers: Schema.array(Schema.string()),
-  blockingWword: Schema.array(Schema.string()).default(['古明地恋','こいし','古明地こいし','恋恋','恋','koishi']),
+  blockingWord: Schema.array(Schema.string()).default(['古明地恋','こいし','古明地こいし','恋恋','恋','koishi']),
   price: Schema.number().default(500),
   punishment: Schema.number().default(250),
   outputLogs: Schema.boolean().default(true),
@@ -113,7 +113,7 @@ export async function apply(ctx: Context, cfg: Config) {
         return null;
       }
       const r18_config = (await ctx.database.get('p_setu', { channelid: CHANNELID }))[0]?.r18;
-      if (cfg.blockingWword.includes(tag)) return session.text('.blocked-tag',[tag]);
+      if (cfg.blockingWord.includes(tag)) return session.text('.blocked-tag',[tag]);
       if (options.r18) {
         if (cfg.adminUsers.includes(USERID)) {
           if (options.r18 == 'f') await ctx.database.set('p_setu', { channelid: CHANNELID }, { r18: 0 })

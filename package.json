@@ -14,7 +14,7 @@
   "homepage": "https://github.com/gfjdh",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gfjdh/koishi-plugin-p-setu"
+    "url": "git+https://github.com/gfjdh/koishi-plugin-p-setu.git"
   },
   "keywords": [
     "chatbot",
