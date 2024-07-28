@@ -1,14 +1,21 @@
 {
-  "name": "koishi-plugin-setu",
-  "description": "涩图",
-  "version": "0.0.1",
+  "name": "koishi-plugin-p-setu",
+  "description": "p点-涩图",
+  "version": "1.0.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
-    "lib",
-    "dist"
+    "lib"
+  ],
+  "contributors": [
+    "gfjdh <2556123498@qq.com>"
   ],
   "license": "MIT",
+  "homepage": "https://github.com/gfjdh",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gfjdh/koishi-plugin-p-setu"
+  },
   "keywords": [
     "chatbot",
     "koishi",
@@ -18,5 +25,13 @@
     "jsonpath-plus": "^9.0.0",
     "koishi": "^4.17.9",
     "sharp": "^0.33.4"
+  },
+  "koishi": {
+    "service": {
+      "required": [
+        "database",
+        "puppeteer"
+      ]
+    }
   }
 }
