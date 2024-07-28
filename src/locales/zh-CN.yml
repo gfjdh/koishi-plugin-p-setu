@@ -1,0 +1,42 @@
+adminUsers:
+  $description: 管理员用户
+outputLogs:
+  $description: 是否将用户的签到操作打印在日志里
+price:
+  $description: 一张涩图的价格
+punishment:
+  $description: 冒充管理员的惩罚
+blockingWword:
+  $description: 屏蔽词
+commands:
+  p-setu:
+    description: 获取一张涩图，可以指定一个tag
+    messages:
+        account-notExists: 君现在还没有p点，请先签到哦
+        no-enough-p1: 那个......
+        no-enough-p2: 君的p点不够力...先签到再来吧qwq
+        please-wait: 稍等哦...上一个图片还没处理完
+        blocked-tag: 不可以看{0}的涩图！
+        r18-warning: 听不懂你在说什么呢，一定是冲多了吧
+        r18-on: 就这么喜欢涩涩？真是无药可救的杂鱼
+        r18-off: 终于知道收敛一点了？
+        r18-mix: 知道了知道了，真没办法
+        r18-error: 哎呀，出现了奇怪的错误
+        r18-no-assignment: 杂鱼，你不配命令我哦
+        no-img-for-tag: 没有你要的{0}呢，可能是xp太怪了吧...
+        img-not-valid: 哎呀，找不到这张图了...
+        get-img-succeed: 这是你点的涩图
+        pay-price: 已扣除{0}p点！现在君还有{1}p点！
+    options:
+        r18: t开启，f关闭，m混合
+  p-return:
+      description: 退款
+      usage: |-
+        使用方法：“退款 @对方”，在旧版QQ需要将@元素改为qq号,需要配置管理员
+      messages:
+        no-id: 退款失败，请尝试将@元素改为qq号！
+        return-p: 已退款{0}p点！现在<at id={1}/>还有{2}p点！
+        punishment1: <at id={0}/>冒充恋恋，扣你{1}p点！
+        punishment2: <at id={0}/>冒充恋恋，扣光你p点！
+
+
