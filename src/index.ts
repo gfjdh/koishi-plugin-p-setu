@@ -67,6 +67,7 @@ export interface p_setu {
   r18: number
   src: string
   stage: string
+  same_user_time: number
 }
 
 export async function apply(ctx: Context, cfg: Config) {
@@ -81,7 +82,8 @@ export async function apply(ctx: Context, cfg: Config) {
     channelid: 'string',
     r18: 'integer',
     src: 'string',
-    stage: 'string'
+    stage: 'string',
+    same_user_time: 'integer'
   }, { autoInc: true })
 
   const logger = ctx.logger("p-setu")
@@ -153,9 +155,22 @@ export async function apply(ctx: Context, cfg: Config) {
         await ctx.database.set('p_setu', { channelid: CHANNELID }, { stage: 'ing' })
         await ctx.database.set('p_system', { userid: USERID }, { p: usersdata[0]?.p - cfg.price })
         const imageBuffer = await ctx.http.get(imageUrl, { responseType: 'arraybuffer' });
+        const getRandomColorValue = () => Math.floor(Math.random() * 256);
         const imageWithBorder = await sharp(imageBuffer)
-          .extend({ top: 1, bottom: 1, left: 1, right: 1, background: { r: 255, g: 255, b: 255, alpha: 1 } })
-          .toBuffer()
+          .extend({
+            top: 1,
+            bottom: 1,
+            left: 1,
+            right: 1,
+            background: {
+              r: getRandomColorValue(),
+              g: getRandomColorValue(),
+              b: getRandomColorValue(),
+              alpha: 1
+            }
+          })
+          .toBuffer();
+
         const imageBase64 = imageWithBorder.toString('base64')
         const image = `data:image/png;base64,${imageBase64}`
 
