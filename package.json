@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-p-setu",
-  "description": "p点-涩图，不会吞图的涩图插件，需要配合p-qiandao食用,更新彩色边框",
-  "version": "1.0.3",
+  "description": "p点-涩图，不会吞图的涩图插件，需要配合p-qiandao食用,更新优化信息",
+  "version": "1.0.4",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "files": [
@@ -11,7 +11,7 @@
     "gfjdh <2556123498@qq.com>"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/gfjdh",
+  "homepage": "https://github.com/gfjdh/koishi-plugin-p-setu",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gfjdh/koishi-plugin-p-setu.git"
