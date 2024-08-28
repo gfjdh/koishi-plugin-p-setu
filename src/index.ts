@@ -11,7 +11,7 @@ export const usage = `
     别名：退款\n
     给上一个或指定的用户退款（例如图没发出来）需要管理员权限\n
 - **为什么需要puppeteer:**\n
-    原装的涩图总是被tx吞，经过一次渲染后加了1px的白边，妈妈再也不怕我的图发不出来啦`;
+    原装的涩图总是被tx吞，经过一次渲染后加了1px的彩色边框，妈妈再也不怕我的图发不出来啦`;
 export const name = 'setu'
 
 export interface Config {
@@ -29,7 +29,7 @@ export const inject = {
 
 export const Config: Schema<Config> = Schema.object({
   adminUsers: Schema.array(Schema.string()),
-  blockingWord: Schema.array(Schema.string()).default(['古明地恋','こいし','古明地こいし','恋恋','恋','koishi']),
+  blockingWord: Schema.array(Schema.string()),
   price: Schema.number().default(500),
   punishment: Schema.number().default(250),
   outputLogs: Schema.boolean().default(true),
@@ -89,7 +89,7 @@ export async function apply(ctx: Context, cfg: Config) {
   const logger = ctx.logger("p-setu")
   ctx.i18n.define('zh-CN', require('./locales/zh-CN'))
 
-  ctx.command('p/p-setu [tag:string]').alias('涩图','色图')
+  ctx.command('p/p-setu [tag:string]').alias('涩图', '色图')
     .option('r18', '-r <mode:string>')
     .action(async ({ session, options }: any, tag) => {
       const USERID = session.userId;//发送者的用户id
@@ -115,7 +115,7 @@ export async function apply(ctx: Context, cfg: Config) {
         return null;
       }
       const r18_config = (await ctx.database.get('p_setu', { channelid: CHANNELID }))[0]?.r18;
-      if (cfg.blockingWord.includes(tag)) return session.text('.blocked-tag',[tag]);
+      if (cfg.blockingWord.includes(tag)) return session.text('.blocked-tag', [tag]);
       if (options.r18) {
         if (cfg.adminUsers.includes(USERID)) {
           if (options.r18 == 'f') await ctx.database.set('p_setu', { channelid: CHANNELID }, { r18: 0 })
@@ -138,13 +138,18 @@ export async function apply(ctx: Context, cfg: Config) {
       const JSON = await ctx.http.get(url, { responseType: "json" });
       const data = JSONPath({ path: "$.data.0", json: JSON });
       if (data.length === 0)
-        await session.send(session.text('.no-img-for-tag',[tag]));
+        await session.send(session.text('.no-img-for-tag', [tag]));
       else {
         const imageUrl = await JSONPath({ path: "$.data.0.urls.regular", json: JSON });
         const isValid = await isValidImageUrl(imageUrl);
         await ctx.database.set('p_setu', { channelid: CHANNELID }, { src: USERID })
-        await session.send(`\n作品名：${(await JSONPath({ path: "$.data.0.title", json: JSON }))}\n标签：${(await JSONPath({ path: "$.data.0.tags", json: JSON }))}\nr18：${(await JSONPath({ path: "$.data.0.r18", json: JSON }))}\nPID：${(await JSONPath({ path: "$.data.0.pid", json: JSON }))}`);
-
+        await session.send(`\n作品名：${
+          (await JSONPath({ path: "$.data.0.title", json: JSON }))}\n标签：${
+            (await JSONPath({ path: "$.data.0.tags", json: JSON }))}\n作者：${
+              (await JSONPath({ path: "$.data.0.author", json: JSON }))}\nUID：${
+                (await JSONPath({ path: "$.data.0.uid", json: JSON }))}\nr18：${
+                  (await JSONPath({ path: "$.data.0.r18", json: JSON }))}\nPID：${
+                    (await JSONPath({ path: "$.data.0.pid", json: JSON }))}`);
         if (isValid) {
           if (cfg.outputLogs) logger.success('图片已成功获取');
         } else {
@@ -153,35 +158,32 @@ export async function apply(ctx: Context, cfg: Config) {
         }
 
         await ctx.database.set('p_setu', { channelid: CHANNELID }, { stage: 'ing' })
-        await ctx.database.set('p_system', { userid: USERID }, { p: usersdata[0]?.p - cfg.price })
+        const rest = usersdata[0]?.p - cfg.price;
+        await ctx.database.set('p_system', { userid: USERID }, { p: rest })
         const imageBuffer = await ctx.http.get(imageUrl, { responseType: 'arraybuffer' });
         const getRandomColorValue = () => Math.floor(Math.random() * 256);
-        const imageWithBorder = await sharp(imageBuffer)
-          .extend({
-            top: 1,
-            bottom: 1,
-            left: 1,
-            right: 1,
-            background: {
-              r: getRandomColorValue(),
-              g: getRandomColorValue(),
-              b: getRandomColorValue(),
-              alpha: 1
-            }
-          })
-          .toBuffer();
-
+        const imageWithBorder = await sharp(imageBuffer).extend({
+          top: 1,
+          bottom: 1,
+          left: 1,
+          right: 1,
+          background: {
+            r: getRandomColorValue(),
+            g: getRandomColorValue(),
+            b: getRandomColorValue(),
+            alpha: 1
+          }
+        }).toBuffer();
         const imageBase64 = imageWithBorder.toString('base64')
         const image = `data:image/png;base64,${imageBase64}`
 
-        await session.sendQueued([h('at', { id: USERID }),session.text('.get-img-succeed'), h('img', { src: image })].join(''));
-        await session.sendQueued(session.text('.pay-price',[cfg.price , usersdata[0]?.p - cfg.price]));
+        await session.sendQueued([h('at', { id: USERID }), session.text('.pay-price', [cfg.price, rest]), h('img', { src: image })].join(''));
         if (cfg.outputLogs) logger.success('图片发送成功');
         await ctx.database.set('p_setu', { channelid: CHANNELID }, { stage: 'over' })
       }
     });
 
-  ctx.command('p/p-return [target]').alias("退款","姐姐，图没啦！").action(async ({ session },target) => {
+  ctx.command('p/p-return [target]').alias("退款", "姐姐，图没啦！").action(async ({ session }, target) => {
     {
       const USERID = session.userId;//发送者的用户id
       const CHANNELID = session.channelId;
@@ -198,18 +200,18 @@ export async function apply(ctx: Context, cfg: Config) {
       if (cfg.outputLogs) logger.success(targetid + '申请退款');
       const targetdata = await ctx.database.get('p_system', { userid: targetid });
       if (cfg.adminUsers.includes(USERID)) {
-        await ctx.database.set('p_system', {userid: targetid}, { p: targetdata[0]?.p + cfg.price})
+        await ctx.database.set('p_system', { userid: targetid }, { p: targetdata[0]?.p + cfg.price })
         if (cfg.outputLogs) logger.success(targetid + '退款成功');
-        return session.text('.return-p',[cfg.price, targetid, targetdata[0]?.p + cfg.price]);
+        return session.text('.return-p', [cfg.price, targetid, targetdata[0]?.p + cfg.price]);
       } else {
         const usersdata = await ctx.database.get('p_system', { userid: USERID });
         if (cfg.outputLogs) logger.success(targetid + '退款惩罚');
         if (usersdata[0]?.p >= cfg.punishment) {
-          await ctx.database.set('p_system', { userid: USERID }, { p: usersdata[0]?.p - cfg.punishment})
-          return session.text('.punishment1',[USERID, cfg.punishment]);
+          await ctx.database.set('p_system', { userid: USERID }, { p: usersdata[0]?.p - cfg.punishment })
+          return session.text('.punishment1', [USERID, cfg.punishment]);
         } else {
-          await ctx.database.set('p_system', { userid: USERID }, { p: 0})
-          return session.text('.punishment2',[USERID]);
+          await ctx.database.set('p_system', { userid: USERID }, { p: 0 })
+          return session.text('.punishment2', [USERID]);
         }
       }
     }

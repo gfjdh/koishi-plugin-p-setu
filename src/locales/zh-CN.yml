@@ -25,7 +25,6 @@ commands:
         r18-no-assignment: 杂鱼，你不配命令我哦
         no-img-for-tag: 没有你要的{0}呢，可能是xp太怪了吧...
         img-not-valid: 哎呀，找不到这张图了...
-        get-img-succeed: 这是你点的涩图
         pay-price: 已扣除{0}p点！现在君还有{1}p点！
     options:
         r18: t开启，f关闭，m混合
