@@ -16,6 +16,7 @@ export const name = 'setu'
 
 export interface Config {
   adminUsers: string[]
+  enableTags: boolean
   blockingWord: string[]
   price: number
   punishment: number
@@ -29,6 +30,7 @@ export const inject = {
 
 export const Config: Schema<Config> = Schema.object({
   adminUsers: Schema.array(Schema.string()),
+  enableTags: Schema.boolean().default(true).description('显示tag'),
   blockingWord: Schema.array(Schema.string()),
   price: Schema.number().default(500),
   punishment: Schema.number().default(250),
@@ -143,13 +145,14 @@ export async function apply(ctx: Context, cfg: Config) {
         const imageUrl = await JSONPath({ path: "$.data.0.urls.regular", json: JSON });
         const isValid = await isValidImageUrl(imageUrl);
         await ctx.database.set('p_setu', { channelid: CHANNELID }, { src: USERID })
-        await session.send(`\n作品名：${
-          (await JSONPath({ path: "$.data.0.title", json: JSON }))}\n标签：${
-            (await JSONPath({ path: "$.data.0.tags", json: JSON }))}\n作者：${
-              (await JSONPath({ path: "$.data.0.author", json: JSON }))}\nUID：${
-                (await JSONPath({ path: "$.data.0.uid", json: JSON }))}\nr18：${
-                  (await JSONPath({ path: "$.data.0.r18", json: JSON }))}\nPID：${
-                    (await JSONPath({ path: "$.data.0.pid", json: JSON }))}`);
+        let info = `作品名：${await JSONPath({ path: "$.data.0.title", json: JSON })}\n`
+        if(cfg.enableTags) info += `标签：${await JSONPath({ path: "$.data.0.tags", json: JSON })}\n`
+        info += `作者：${await JSONPath({ path: "$.data.0.author", json: JSON })}\n`
+        info += `UID：${await JSONPath({ path: "$.data.0.uid", json: JSON })}\n`
+        info += `r18：${await JSONPath({ path: "$.data.0.r18", json: JSON })}\n`
+        info += `PID：${await JSONPath({ path: "$.data.0.pid", json: JSON })}\n`;
+        await session.send(info);
+
         if (isValid) {
           if (cfg.outputLogs) logger.success('图片已成功获取');
         } else {
