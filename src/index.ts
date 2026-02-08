@@ -95,6 +95,10 @@ module.exports = __toCommonJS(src_exports);
 var import_koishi = require("koishi");
 var import_jsonpath_plus = require("jsonpath-plus");
 var import_sharp = __toESM(require("sharp"));
+// 引入 fs 和 path 模块
+var import_fs = require("fs");
+var import_path = require("path");
+
 var usage = `
 - **指令：p-setu [tag...]**
 
@@ -169,6 +173,16 @@ async function apply(ctx, cfg) {
   const logger = ctx.logger("p-setu");
   ctx.i18n.define("zh-CN", require_zh_CN());
 
+  // === 目录创建逻辑：在插件同级目录创建 temp ===
+  const tempDir = import_path.join(__dirname, 'temp');
+  if (!import_fs.existsSync(tempDir)) {
+      try {
+        import_fs.mkdirSync(tempDir, { recursive: true });
+      } catch (e) {
+        logger.warn('无法创建缓存目录，请检查文件夹权限');
+      }
+  }
+
   ctx.command("p/p-setu [...tags]")
     .alias("涩图", "色图")
     .option("r18", "-r <mode:string>")
@@ -228,7 +242,6 @@ async function apply(ctx, cfg) {
       }
     }
 
-    // AI 参数控制逻辑
     let url = "https://api.lolicon.app/setu/v2?size=regular&r18=" + r18_config;
 
     if (options.exai) {
@@ -257,16 +270,14 @@ async function apply(ctx, cfg) {
       const aiTypeArr = (0, import_jsonpath_plus.JSONPath)({ path: "$.data.0.aiType", json: JSON });
       const aiType = (aiTypeArr && aiTypeArr.length > 0) ? aiTypeArr[0] : 0;
       
-      // 二次检测机制 1：排除AI (-e) 但 API 返回了 AI 图
       if (options.exai && aiType > 0) {
           if (cfg.outputLogs) logger.info("API 返回了 AI 图片，已被客户端拦截。");
-          return session.text(".ai-filter-blocked"); // 此时并未扣费，提示已退回
+          return session.text(".ai-filter-blocked");
       }
 
-      // 二次检测机制 2：搜索AI (-a) 但 API 返回了 非AI 图
       if (options.ai && aiType === 0) {
           if (cfg.outputLogs) logger.info("API 返回了非 AI 图片（用户仅请求AI），已被客户端拦截。");
-          return session.text(".ai-only-blocked"); // 此时并未扣费，提示已退回
+          return session.text(".ai-only-blocked");
       }
 
       const imageUrl = (0, import_jsonpath_plus.JSONPath)({ path: "$.data.0.urls.regular", json: JSON })[0];
@@ -289,33 +300,66 @@ async function apply(ctx, cfg) {
         if (cfg.outputLogs) logger.success("图片已成功获取");
       } else {
         if (cfg.outputLogs) logger.info("图片链接无效");
-        return session.text(".img-not-valid"); // 此时并未扣费，提示已退回
+        return session.text(".img-not-valid"); 
       }
 
-      // 注意：真正的扣费逻辑在这里！
-      // 只有上面所有的 if/else 都通过了，没有 return 掉，才会执行下面的扣钱。
       await ctx.database.set("p_setu", { channelid: CHANNELID }, { stage: "ing" });
       const rest = usersdata[0]?.p - cfg.price;
       await ctx.database.set("p_system", { userid: USERID }, { p: rest });
 
-      const imageBuffer = await ctx.http.get(imageUrl, { responseType: "arraybuffer" });
-      const getRandomColorValue = __name(() => Math.floor(Math.random() * 256), "getRandomColorValue");
-      
-      const imageWithBorder = await (0, import_sharp.default)(imageBuffer).extend({
-        top: 1, bottom: 1, left: 1, right: 1,
-        background: { r: getRandomColorValue(), g: getRandomColorValue(), b: getRandomColorValue(), alpha: 1 }
-      }).toBuffer();
+      // === 修改重点：本地缓存+发送+清理 ===
+      try {
+        // 1. 下载图片流
+        const imageBuffer = await ctx.http.get(imageUrl, { responseType: "arraybuffer" });
+        
+        // 2. 生成随机颜色边框 (保持原有逻辑)
+        const getRandomColorValue = __name(() => Math.floor(Math.random() * 256), "getRandomColorValue");
+        const imageWithBorder = await (0, import_sharp.default)(imageBuffer).extend({
+          top: 1, bottom: 1, left: 1, right: 1,
+          background: { r: getRandomColorValue(), g: getRandomColorValue(), b: getRandomColorValue(), alpha: 1 }
+        }).toBuffer();
 
-      const imageBase64 = imageWithBorder.toString("base64");
-      const image = `data:image/png;base64,${imageBase64}`;
+        // 3. 构造本地文件名并写入
+        const fileName = `${Date.now()}_${Math.floor(Math.random() * 1000)}.png`;
+        const filePath = import_path.join(tempDir, fileName);
+        
+        // 写入文件
+        await import_fs.promises.writeFile(filePath, imageWithBorder);
 
-      await session.sendQueued([(0, import_koishi.h)("at", { id: USERID }), session.text(".pay-price", [cfg.price, rest]), (0, import_koishi.h)("img", { src: image })].join(""));
-      
-      if (cfg.outputLogs) logger.success("图片发送成功");
-      await ctx.database.set("p_setu", { channelid: CHANNELID }, { stage: "over" });
+        // 4. 发送图片 (使用本地路径，Koishi 适配器通常支持路径或 file://)
+        // 注意：此处 session.text(".pay-price", ...) 返回的是文本，拼接图片元素
+        await session.sendQueued([
+          (0, import_koishi.h)("at", { id: USERID }), 
+          session.text(".pay-price", [cfg.price, rest]), 
+          (0, import_koishi.h)("img", { src: filePath })
+        ].join(""));
+
+        if (cfg.outputLogs) logger.success("图片发送成功");
+        
+        // 5. 延迟清理临时文件 (60秒后删除)
+        ctx.setTimeout(() => {
+          import_fs.unlink(filePath, (err) => {
+            if (err) {
+              if(cfg.outputLogs) logger.warn(`删除临时文件失败: ${fileName}, 错误: ${err}`);
+            } else {
+              // if(cfg.outputLogs) logger.info(`临时文件已清理: ${fileName}`);
+            }
+          });
+        }, 60000); 
+
+      } catch (err) {
+        logger.error(`处理或发送图片时出错: ${err}`);
+        await session.send("发送图片时出现了问题，请稍后再试。");
+        // 如果出错，把钱退回去 (可选逻辑，根据需要保留)
+        // await ctx.database.set("p_system", { userid: USERID }, { p: usersdata[0]?.p });
+      } finally {
+        // 无论成功失败，重置状态
+        await ctx.database.set("p_setu", { channelid: CHANNELID }, { stage: "over" });
+      }
     }
   });
 
+  // === 补全退款逻辑 (从原文件 p-return 复制) ===
   ctx.command("p/p-return [target]").alias("退款", "姐姐，图没啦！").action(async ({ session }, target) => {
     const USERID = session.userId;
     const CHANNELID = session.channelId;
