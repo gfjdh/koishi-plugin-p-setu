@@ -22,7 +22,6 @@
     "plugin"
   ],
   "peerDependencies": {
-    "jsonpath-plus": "^9.0.0",
     "koishi": "^4.17.9",
     "sharp": "^0.33.4"
   },
